@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      background: #fff;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: bold;
+      color: #222;
+    }
+
+    .score {
+      display: flex;
+      gap: 30px;
+    }
+
+    .score-item {
+      text-align: center;
+    }
+
+    .score-item .label {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .score-item .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #222;
+    }
+
+    #status {
+      font-size: 16px;
+      color: #555;
+      min-height: 24px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      grid-template-rows: repeat(3, 90px);
+      gap: 8px;
+    }
+
+    .cell {
+      width: 90px;
+      height: 90px;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) {
+      background: #e8e8e8;
+      transform: scale(1.05);
+    }
+
+    .cell.x { color: #185FA5; }
+    .cell.o { color: #993C1D; }
+
+    .cell.win {
+      background: #dbeafe;
+      border-color: #93c5fd;
+    }
+
+    button {
+      padding: 10px 32px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Tic Tac Toe</h1>
+
+  <div class="score">
+    <div class="score-item">
+      <div class="label">X</div>
+      <div class="value" id="scoreX">0</div>
+    </div>
+    <div class="score-item">
+      <div class="label">Draw</div>
+      <div class="value" id="scoreDraw">0</div>
+    </div>
+    <div class="score-item">
+      <div class="label">O</div>
+      <div class="value" id="scoreO">0</div>
+    </div>
+  </div>
+
+  <div id="status">Player X's turn</div>
+
+  <div class="board" id="board"></div>
+
+  <button onclick="resetGame()">Reset</button>
+</div>
+
+<script>
+  // All winning combinations (indices of the 9 cells)
+  const WINNING_COMBOS = [
+    [0, 1, 2], // top row
+    [3, 4, 5], // middle row
+    [6, 7, 8], // bottom row
+    [0, 3, 6], // left column
+    [1, 4, 7], // middle column
+    [2, 5, 8], // right column
+    [0, 4, 8], // diagonal
+    [2, 4, 6]  // diagonal
+  ];
+
+  let board = Array(9).fill(''); // empty board
+  let currentPlayer = 'X';      // X goes first
+  let gameOver = false;
+  let scores = { X: 0, O: 0, Draw: 0 };
+
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+
+  // Render the board on screen
+  function render() {
+    boardEl.innerHTML = '';
+    const winningCells = getWinningCells();
+
+    board.forEach((value, index) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell'
+        + (value ? ' taken ' + value.toLowerCase() : '')
+        + (winningCells.includes(index) ? ' win' : '');
+      cell.textContent = value;
+      cell.onclick = () => makeMove(index);
+      boardEl.appendChild(cell);
+    });
+
+    // Update score display
+    document.getElementById('scoreX').textContent = scores.X;
+    document.getElementById('scoreO').textContent = scores.O;
+    document.getElementById('scoreDraw').textContent = scores.Draw;
+  }
+
+  // Returns indices of the winning cells (if any)
+  function getWinningCells() {
+    for (let [a, b, c] of WINNING_COMBOS) {
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        return [a, b, c];
+      }
+    }
+    return [];
+  }
+
+  // Check if there is a winner or a draw
+  function checkResult() {
+    for (let [a, b, c] of WINNING_COMBOS) {
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        return board[a]; // return 'X' or 'O'
+      }
+    }
+    if (board.every(cell => cell !== '')) {
+      return 'Draw';
+    }
+    return null; // game still going
+  }
+
+  // Handle a player clicking a cell
+  function makeMove(index) {
+    if (gameOver || board[index]) return; // ignore if game over or cell taken
+
+    board[index] = currentPlayer;
+    const result = checkResult();
+
+    if (result) {
+      gameOver = true;
+      if (result === 'Draw') {
+        scores.Draw++;
+        statusEl.textContent = "It's a Draw! Play again?";
+      } else {
+        scores[result]++;
+        statusEl.textContent = 'Winner: ' + result + '!';
+      }
+    } else {
+      // Switch player
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      statusEl.textContent = "Player " + currentPlayer + "'s turn";
+    }
+
+    render();
+  }
+
+  // Reset the board for a new game (scores are kept)
+  function resetGame() {
+    board = Array(9).fill('');
+    currentPlayer = 'X';
+    gameOver = false;
+    statusEl.textContent = "Player X's turn";
+    render();
+  }
+
+  // Start the game
+  render();
+</script>
+
+</body>
+</html>
